@@ -145,7 +145,7 @@ DELETE /foods/{food_id}
 {
     "detail": "Food not found"
 }
-
+```
 ## Project Structure
 
 ```
