@@ -18,11 +18,11 @@ def get_expiring_foods(db: Session, days_before_expiry: int = 2):
     notifications = []
     for food, category in results:
         expiry_date = food.admission_date + timedelta(days=shelf_life_days)
-        notifications.append({
-            "food_id": food.id,
-            "user_id": 1,  # en MVP usuario único
-            "message": f"⚠️ Tu {food.name} ({category.name}) caduca el {expiry_date}"
-        })
+        # notifications.append({
+        #     "food_id": food.id,
+        #     "user_id": 1,  # en MVP usuario único
+        #     "message": f"⚠️ Tu {food.name} ({category.name}) caduca el {expiry_date}"
+        # })
         if today <= expiry_date <= upcoming_date:
             notifications.append({
                 "food_id": food.id,
