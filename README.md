@@ -8,11 +8,13 @@ FoodSaver is an API that allows you to manage a food inventory system, organizin
 
 ## Technologies Used
 
-- FastAPI
-- SQLAlchemy
-- MySQL
-- Pydantic
-- Uvicorn
+- fastapi
+- uvicorn
+- sqlalchemy
+- mysql-connector-python
+- pydantic
+- pymysql
+- resend
 
 ## Prerequisites
 
