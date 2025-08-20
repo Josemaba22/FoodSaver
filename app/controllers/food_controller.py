@@ -24,4 +24,5 @@ def get_food(food_id: int, db: Session = Depends(get_db)):
 
 @router.post("/", response_model=FoodResponseDTO)
 def create_food(food: FoodCreateDTO, db: Session = Depends(get_db)):
-    return food_service.add_food(db, food)
+    return food_service.add_food(db, food) 
+    
