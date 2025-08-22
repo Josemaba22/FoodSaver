@@ -2,6 +2,10 @@
 
 A REST API built with FastAPI for food inventory management.
 
+[![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com/)
+[![MySQL](https://img.shields.io/badge/mysql-%2300f.svg?style=for-the-badge&logo=mysql&logoColor=white)](https://www.mysql.com/)
+
 ## Description
 
 FoodSaver is an API that allows you to manage a food inventory system, organizing items by categories and tracking their admission dates.
@@ -18,11 +22,41 @@ FoodSaver is an API that allows you to manage a food inventory system, organizin
 
 ## Prerequisites
 
-- Python 3.8 or higher
-- MySQL Server
-- pip (Python package manager)
+- Docker and Docker Compose
+- Or for local development:
+  - Python 3.8 or higher
+  - MySQL Server
+  - pip (Python package manager)
 
 ## Setup and Running
+
+### Docker Setup (Recommended)
+
+1. Build and start the containers:
+```bash
+docker-compose up --build -d
+```
+
+2. Access the API:
+- API Endpoints: http://localhost:3002
+- Swagger UI: http://localhost:3002/docs
+- ReDoc: http://localhost:3002/redoc
+
+3. Database Connection Details:
+```
+Host: localhost
+Port: 3308
+Database: food_inventory
+User: food_user
+Password: food_password
+```
+
+4. Stop the containers:
+```bash
+docker-compose down
+```
+
+### Local Development Setup
 
 ### 1. Create and Activate Virtual Environment
 
