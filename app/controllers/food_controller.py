@@ -24,5 +24,13 @@ def get_food(food_id: int, db: Session = Depends(get_db)):
 
 @router.post("/", response_model=FoodResponseDTO)
 def create_food(food: FoodCreateDTO, db: Session = Depends(get_db)):
-    return food_service.add_food(db, food) 
-    
+    return food_service.add_food(db, food)
+
+@router.put("/{food_id}", response_model=FoodResponseDTO)
+def update_food(food_id: int, food: FoodCreateDTO, db: Session = Depends(get_db)):
+    return food_service.update_food(db, food_id, food)
+
+@router.delete("/{food_id}", response_model=dict)
+def delete_food(food_id: int, db: Session = Depends(get_db)):
+    food_service.delete_food(db, food_id)
+    return {"message": "Food deleted successfully"}
