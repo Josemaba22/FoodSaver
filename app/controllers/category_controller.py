@@ -25,3 +25,12 @@ def get_category(category_id: int, db: Session = Depends(get_db)):
 @router.post("/", response_model=CategoryResponseDTO)
 def create_category(category: CategoryCreateDTO, db: Session = Depends(get_db)):
     return category_service.add_category(db, category)
+
+@router.put("/{category_id}", response_model=CategoryResponseDTO)
+def update_category(category_id: int, category: CategoryCreateDTO, db: Session = Depends(get_db)):
+    return category_service.update_category(db, category_id, category)
+
+@router.delete("/{category_id}", response_model=dict)
+def delete_category(category_id: int, db: Session = Depends(get_db)):
+    category_service.delete_category(db, category_id)
+    return {"message": "Category deleted successfully"}
