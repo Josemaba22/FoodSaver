@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Validación de Caducidad</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="../src/css/styles.css" rel="stylesheet" />
+</head>
+<body class="bg-gray-100 flex flex-col items-center justify-center min-h-screen">
+
+  <!-- Header -->
+  <header class="w-full bg-yellow-500 text-white text-center py-4 shadow-md">
+    <h1 class="text-2xl font-bold">Validación de Caducidad</h1>
+    <p class="text-sm">Revisión de alimentos perecederos</p>
+  </header>
+
+  <!-- Contenido principal -->
+  <main id="expiry-container" class="flex flex-col items-center mt-6 w-full max-w-md px-4">
+
+    <!-- Tarjeta de advertencia -->
+    <div class="bg-white rounded-2xl shadow-lg p-6 text-center w-full">
+      <div class="flex justify-center mb-4">
+        <svg xmlns="http://www.w3.org/2000/svg" 
+             class="h-16 w-16 text-yellow-500" 
+             fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 
+                1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L4.34 
+                16c-.77 1.333.192 3 1.732 3z"/>
+        </svg>
+      </div>
+      <h2 id="expiry-title" class="text-xl font-bold text-gray-800">Producto con advertencia</h2>
+      <p id="expiry-message" class="text-gray-600 mt-2">
+        Validando fecha de caducidad...
+      </p>
+
+      <!-- Detalle del producto -->
+      <div class="flex items-center mt-6 bg-gray-50 p-4 rounded-xl shadow-sm">
+        <img id="product-img" src="https://via.placeholder.com/80" alt="Producto" class="w-20 h-20 rounded-lg object-cover">
+        <div class="ml-4 text-left">
+          <p id="product-name" class="text-gray-700 font-semibold">Nombre: ---</p>
+          <p id="product-category" class="text-gray-500 text-sm">Categoría: ---</p>
+          <p id="product-expiry" class="text-gray-500 text-sm">Caducidad: ---</p>
+        </div>
+      </div>
+
+      <!-- Botones -->
+      <div class="mt-6 flex gap-3">
+        <a href="../../index.html" 
+           class="flex-1 py-3 bg-green-600 text-white font-semibold rounded-xl shadow hover:bg-green-700 transition text-center">
+          Escanear otro
+        </a>
+        <a href="../pages/error.html?type=notFound" 
+           class="flex-1 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow hover:bg-gray-400 transition text-center">
+          Reportar
+        </a>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="w-full text-center py-4 mt-6 text-gray-500 text-sm">
+    © 2025 - Frontend Demo
+  </footer>
+
+  <script src="../js/expiry.js"></script>
+</body>
+</html>
