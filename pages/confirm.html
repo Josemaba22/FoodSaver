@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Confirmación de Registro</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="../src/css/styles.css" rel="stylesheet" />
+</head>
+<body class="bg-gray-100 flex flex-col items-center justify-center min-h-screen">
+
+  <!-- Header -->
+  <header class="w-full bg-green-600 text-white text-center py-4 shadow-md">
+    <h1 class="text-2xl font-bold">Confirmación</h1>
+    <p class="text-sm">Registro de producto exitoso</p>
+  </header>
+
+  <!-- Contenido principal -->
+  <main id="confirmation-container" class="flex flex-col items-center mt-6 w-full max-w-md px-4">
+    
+    <!-- Tarjeta de confirmación -->
+    <div class="bg-white rounded-2xl shadow-lg p-6 text-center w-full">
+      <div class="flex justify-center mb-4">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2l4-4m5 2a9 9 0 11-18 0a9 9 0 0118 0z" />
+        </svg>
+      </div>
+      <h2 class="text-xl font-bold text-gray-800">Producto registrado correctamente</h2>
+      <p class="text-gray-600 mt-2">Se ha guardado la información en el sistema.</p>
+
+      <!-- Detalle del producto -->
+      <div class="flex items-center mt-6 bg-gray-50 p-4 rounded-xl shadow-sm">
+        <img src="https://via.placeholder.com/80" alt="Producto" class="w-20 h-20 rounded-lg object-cover">
+        <div class="ml-4 text-left">
+          <p class="text-gray-700 font-semibold">Nombre: Yogurt Natural</p>
+          <p class="text-gray-500 text-sm">Categoría: Lácteos</p>
+          <p class="text-gray-500 text-sm">Caducidad: 15/01/2026</p>
+        </div>
+      </div>
+
+      <!-- Botones -->
+      <div class="mt-6 flex gap-3">
+        <a href="../../index.html" 
+           class="flex-1 py-3 bg-green-600 text-white font-semibold rounded-xl shadow hover:bg-green-700 transition text-center">
+          Escanear otro
+        </a>
+        <a href="#" 
+           class="flex-1 py-3 bg-gray-300 text-gray-800 font-semibold rounded-xl shadow hover:bg-gray-400 transition text-center">
+          Finalizar
+        </a>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="w-full text-center py-4 mt-6 text-gray-500 text-sm">
+    © 2025 - Frontend Demo
+  </footer>
+
+  <script src="../src/js/confirmation.js"></script>
+</body>
+</html>
