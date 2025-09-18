@@ -59,3 +59,6 @@ def delete_food(db: Session, food_id: int):
     food = get_food_by_id(db, food_id)
     db.delete(food)
     db.commit()
+
+def get_all_foods(db: Session):
+    return db.query(Food).join(Food.category).all()
