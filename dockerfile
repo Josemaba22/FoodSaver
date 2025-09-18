@@ -9,6 +9,7 @@ ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
 # Copia el archivo de dependencias
+COPY app/foodimage/modelo_pizza_steak.h5 app/foodimage/modelo_pizza_steak.h5
 COPY requirements.txt .
 
 # Instala las dependencias
