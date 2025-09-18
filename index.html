@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Take Photo and Predict</title>
+</head>
+<body>
+  <h2>Take a photo for prediction</h2>
+  <video id="video" width="320" height="240" autoplay></video>
+  <button id="snap">Take Photo</button>
+  <canvas id="canvas" width="224" height="224" style="display:none;"></canvas>
+  <form id="uploadForm">
+    <input type="file" id="fileInput" style="display:none;">
+    <button type="submit">Send to API</button>
+  </form>
+  <pre id="result"></pre>
+
+  <script>
+    // Access the camera
+    const video = document.getElementById('video');
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => { video.srcObject = stream; });
+
+    // Take photo
+    const canvas = document.getElementById('canvas');
+    document.getElementById('snap').onclick = function() {
+      // Dibujar la imagen en el canvas
+      canvas.getContext('2d').drawImage(video, 0, 0, 224, 224);
+
+      // Descargar la imagen
+      canvas.toBlob(blob => {
+        // Descargar la imagen
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'photo.jpg';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        // Crear un File para enviar al endpoint
+        const file = new File([blob], "photo.jpg", { type: "image/jpeg" });
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(file);
+        document.getElementById('fileInput').files = dataTransfer.files;
+
+        // Enviar automáticamente al endpoint
+        document.getElementById('uploadForm').requestSubmit();
+      }, 'image/jpeg');
+    };
+
+    // Send to API
+    document.getElementById('uploadForm').onsubmit = async function(e) {
+      e.preventDefault();
+      const file = document.getElementById('fileInput').files[0];
+      if (!file) {
+        alert("Take a photo first!");
+        return;
+      }
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('http://localhost:3002/foods/predict-image/', {
+        method: 'POST',
+        body: formData
+      });
+      const result = await response.json();
+      document.getElementById('result').textContent = JSON.stringify(result, null, 2);
+    };
+  </script>
+</body>
+</html>
