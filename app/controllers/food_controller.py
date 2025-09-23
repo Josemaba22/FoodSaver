@@ -107,7 +107,7 @@ def update_food(food_id: int, food: FoodCreateDTO, db: Session = Depends(get_db)
 @router.delete("/{food_id}", response_model=dict)
 def delete_food(food_id: int, db: Session = Depends(get_db)):
     food_service.delete_food(db, food_id)
-    return {"message": "Food deleted successfully"}
+    return {"message": "Se eliminó exitosamente"}
 
 # Cargar el modelo una sola vez al iniciar el servidor
 try:
@@ -282,10 +282,517 @@ async def predict_image(
             file.file.close()
 
 
-@router.get("/recipe/")
-async def get_recipe():
+@router.post("/recipes/", response_model=dict)
+async def get_recipes_by_ingredients(
+    ingredients: List[str] = Form(..., description="Lista de ingredientes separados por comas"),
+    db: Session = Depends(get_db)
+):
+    """
+    Obtener recetas basadas en ingredientes usando servicio externo
+    
+    Args:
+        ingredients: Lista de ingredientes para buscar recetas
+        db: Sesión de base de datos
+    
+    Returns:
+        JSON con ingredientes enviados y recetas obtenidas del servicio externo
+    """
+    import httpx
+    
     try:
-        recipe = await food_service.get_recipe_from_mcp()
-        return recipe
+        # Preparar payload para el servicio externo
+        payload = {
+            "ingredients": ingredients
+        }
+        
+        # Realizar petición al servicio externo de recetas
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                "http://localhost:8001/api/v1/recipes",
+                json=payload,
+                headers={"Content-Type": "application/json"}
+            )
+            
+            # Verificar si la respuesta fue exitosa
+            if response.status_code != 200:
+                raise HTTPException(
+                    status_code=502,
+                    detail=f"Error del servicio de recetas: HTTP {response.status_code}"
+                )
+            
+            # Obtener respuesta del servicio
+            recipes_data = response.json()
+            
+            # Retornar en el formato esperado
+            return {
+                "ingredients": ingredients,
+                "recipes": recipes_data.get("recipes", [])
+            }
+            
+    except httpx.ConnectError:
+        raise HTTPException(
+            status_code=503,
+            detail="No se pudo conectar al servicio de recetas. Asegúrate de que esté ejecutándose en http://localhost:8001"
+        )
+    except httpx.TimeoutException:
+        raise HTTPException(
+            status_code=504,
+            detail="Timeout al conectar con el servicio de recetas"
+        )
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Error comunicando con MCP: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error interno al obtener recetas: {str(e)}"
+        )
+
+@router.get("/recipes/from-foods/", response_model=dict)
+async def get_recipes_from_database_foods(
+    db: Session = Depends(get_db)
+):
+    """
+    Obtener recetas basadas en todos los alimentos de la base de datos
+    
+    Args:
+        db: Sesión de base de datos
+    
+    Returns:
+        JSON con ingredientes extraídos de la BD y recetas del servicio externo
+    """
+    import httpx
+    
+    try:
+        # Obtener todos los alimentos de la base de datos usando food_service
+        foods = food_service.list_all_foods(db)
+        
+        if not foods:
+            raise HTTPException(status_code=404, detail="No se encontraron alimentos en la base de datos")
+        
+        # Extraer nombres de alimentos como ingredientes
+        ingredients = []
+        for food in foods:
+            # Convertir nombre a ingrediente (lowercase, singular básico)
+            ingredient = food.name.lower().strip()
+            
+            # Mapeo básico para convertir a inglés (opcional)
+            spanish_to_english = {
+                "manzana": "apple",
+                "banana": "banana", 
+                "tomate": "tomato",
+                "cebolla": "onion",
+                "zanahoria": "carrot",
+                "papa": "potato",
+                "pollo": "chicken",
+                "arroz": "rice",
+                "ajo": "garlic",
+                "pimiento": "bell pepper"
+            }
+            
+            # Usar traducción si existe, sino usar el nombre original
+            ingredient = spanish_to_english.get(ingredient, ingredient)
+            
+            if ingredient not in ingredients:
+                ingredients.append(ingredient)
+        
+        # Si no hay ingredientes, error
+        if not ingredients:
+            raise HTTPException(status_code=400, detail="No se pudieron extraer ingredientes válidos")
+        
+        # Preparar payload para el servicio externo
+        payload = {
+            "ingredients": ingredients
+        }
+        
+        # Realizar petición al servicio externo de recetas
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                "http://localhost:8001/api/v1/recipes",
+                json=payload,
+                headers={"Content-Type": "application/json"}
+            )
+            
+            if response.status_code != 200:
+                raise HTTPException(
+                    status_code=502,
+                    detail=f"Error del servicio de recetas: HTTP {response.status_code}"
+                )
+            
+            recipes_data = response.json()
+            
+            return {
+                "ingredients": ingredients,
+                "recipes": recipes_data.get("recipes", []),
+                "source_foods": [{"id": food.id, "name": food.name} for food in foods]
+            }
+            
+    except HTTPException:
+        raise
+    except httpx.ConnectError:
+        raise HTTPException(
+            status_code=503,
+            detail="No se pudo conectar al servicio de recetas en http://localhost:8001"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error interno al procesar alimentos: {str(e)}"
+        )
+
+# ===== ENDPOINTS DE ALERTAS AUTOMÁTICAS =====
+
+@router.get("/alerts/status/", response_model=dict)
+def get_alerts_status():
+    """
+    Obtener estado del sistema de alertas automáticas
+    
+    Returns:
+        Estado de configuración y servicios de notificaciones
+    """
+    from app.services.auto_notification_service import get_notification_status
+    
+    try:
+        status = get_notification_status()
+        return {
+            "success": True,
+            "status": status
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error obteniendo estado de alertas: {str(e)}"
+        )
+
+@router.get("/alerts/check/", response_model=dict)
+def check_foods_expiry(
+    days_ahead: int = Query(3, description="Días de anticipación para verificar"),
+    db: Session = Depends(get_db)
+):
+    """
+    Verificar qué alimentos están próximos a vencer (sin enviar email)
+    
+    Args:
+        days_ahead: Días de anticipación para la verificación
+        db: Sesión de base de datos
+    
+    Returns:
+        Lista de alimentos próximos a vencer
+    """
+    from app.services.auto_notification_service import get_foods_near_expiry
+    
+    try:
+        foods_near_expiry = get_foods_near_expiry(db, days_ahead)
+        
+        return {
+            "success": True,
+            "foods_near_expiry": [
+                {
+                    "id": food.id,
+                    "name": food.name,
+                    "admission_date": food.admission_date.isoformat(),
+                    "days_until_expiry": (food.admission_date - date.today()).days,
+                    "category": food.category.name if hasattr(food, 'category') and food.category else None,
+                    "image_url": food.image_url
+                }
+                for food in foods_near_expiry
+            ],
+            "total_count": len(foods_near_expiry),
+            "check_date": date.today().isoformat(),
+            "days_ahead": days_ahead
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error verificando alimentos: {str(e)}"
+        )
+
+@router.post("/alerts/send-manual/", response_model=dict)
+async def send_manual_alert(
+    recipient_email: str = Form(..., description="Email donde enviar la alerta"),
+    days_ahead: int = Form(3, description="Días de anticipación para la alerta"),
+    db: Session = Depends(get_db)
+):
+    """
+    Enviar alerta manual por email sobre alimentos próximos a vencer
+    
+    Args:
+        recipient_email: Email destinatario
+        days_ahead: Días de anticipación (default: 3)
+        db: Sesión de base de datos
+    
+    Returns:
+        Resultado del envío del email
+    """
+    from app.services.auto_notification_service import get_foods_near_expiry, send_expiration_alert
+    
+    try:
+        # Obtener alimentos próximos a vencer
+        foods_near_expiry = get_foods_near_expiry(db, days_ahead)
+        
+        if not foods_near_expiry:
+            return {
+                "success": True,
+                "message": "No hay alimentos próximos a vencer",
+                "foods_count": 0,
+                "recipient": recipient_email
+            }
+        
+        # Enviar email
+        result = await send_expiration_alert(foods_near_expiry, recipient_email)
+        
+        return result
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error enviando alerta manual: {str(e)}"
+        )
+
+@router.post("/alerts/send-auto/", response_model=dict)
+async def trigger_auto_alert(db: Session = Depends(get_db)):
+    """
+    Disparar manualmente el proceso de alerta automática
+    (útil para testing o ejecución manual del proceso automático)
+    
+    Returns:
+        Resultado del envío automático
+    """
+    from app.services.auto_notification_service import auto_send_daily_alert
+    
+    try:
+        result = await auto_send_daily_alert()
+        return result
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error en proceso de alerta automática: {str(e)}"
+        )
+
+@router.get("/alerts/scheduler-status/", response_model=dict)
+def get_scheduler_status():
+    """
+    Obtener estado del scheduler de alertas automáticas
+    
+    Returns:
+        Estado del scheduler y configuración
+    """
+    try:
+        from app.services.scheduler_service import get_scheduler_status
+        
+        status = get_scheduler_status()
+        return {
+            "success": True,
+            "scheduler": status
+        }
+        
+    except ImportError:
+        return {
+            "success": False,
+            "error": "Scheduler no disponible (dependencias no instaladas)",
+            "scheduler": {"running": False, "enabled": False}
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error obteniendo estado del scheduler: {str(e)}"
+        )
+
+@router.post("/alerts/test-scheduler/", response_model=dict)
+async def test_scheduler():
+    """
+    Probar el funcionamiento del scheduler manualmente
+    
+    Returns:
+        Resultado de la prueba del scheduler
+    """
+    try:
+        from app.services.scheduler_service import test_scheduler as run_test
+        
+        result = await run_test()
+        return result
+        
+    except ImportError:
+        raise HTTPException(
+            status_code=503,
+            detail="Scheduler no disponible (dependencias no instaladas)"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error probando scheduler: {str(e)}"
+        )
+
+@router.post("/alerts/test-jose/", response_model=dict)
+async def test_email_for_jose():
+    """
+    Endpoint de prueba específico para verificar el envío de emails a José
+    
+    Returns:
+        Resultado del envío del email de prueba
+    """
+    import resend
+    from datetime import date
+    
+    try:
+        # Email de prueba específico para José
+        response = resend.Emails.send({
+            "from": "onboarding@resend.dev",
+            "to": ["josemaba22@gmail.com"],
+            "subject": "🧪 Test Email - Food Inventory para José",
+            "html": f"""
+            <html>
+                <head>
+                    <style>
+                        body {{ font-family: Arial, sans-serif; margin: 20px; }}
+                        .header {{ color: #2E8B57; border-bottom: 2px solid #2E8B57; padding-bottom: 10px; }}
+                        .success {{ background-color: #d4edda; padding: 15px; border-radius: 5px; margin: 20px 0; }}
+                        .footer {{ margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; font-size: 12px; }}
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <h1>✅ ¡Hola José!</h1>
+                    </div>
+                    
+                    <div class="success">
+                        <p>🎉 <strong>¡Excelente noticia!</strong></p>
+                        <p>Si estás leyendo este email, significa que tu sistema de alertas de Food Inventory está funcionando perfectamente.</p>
+                    </div>
+                    
+                    <h3>📋 Información del sistema:</h3>
+                    <ul>
+                        <li><strong>Email configurado:</strong> josemaba22@gmail.com</li>
+                        <li><strong>Fecha de prueba:</strong> {date.today().strftime('%d/%m/%Y')}</li>
+                        <li><strong>Sistema:</strong> Food Inventory API</li>
+                        <li><strong>Estado:</strong> ✅ Operativo</li>
+                    </ul>
+                    
+                    <h3>🔔 Próximos pasos:</h3>
+                    <p>Ahora recibirás automáticamente alertas cuando tengas alimentos próximos a vencer.</p>
+                    <p>Las alertas se envían diariamente a las <strong>9:00 AM</strong> si hay alimentos que vencen en los próximos <strong>3 días</strong>.</p>
+                    
+                    <div class="footer">
+                        <p>Este es un email de prueba del sistema Food Inventory API</p>
+                        <p>Si tienes alguna pregunta, revisa la documentación del sistema.</p>
+                    </div>
+                </body>
+            </html>
+            """
+        })
+        
+        return {
+            "success": True,
+            "message": "✅ Email de prueba enviado exitosamente a José",
+            "email_id": response.get("id"),
+            "recipient": "josemaba22@gmail.com",
+            "sent_at": date.today().isoformat(),
+            "next_steps": "Revisa tu email (incluye carpeta de SPAM) para confirmar que llegó"
+        }
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "details": "Verifica que RESEND_API_KEY esté configurada correctamente en el archivo .env",
+            "troubleshooting": {
+                "step_1": "Ve a https://resend.com/ y crea una cuenta",
+                "step_2": "Obtén tu API Key del dashboard",
+                "step_3": "Actualiza RESEND_API_KEY en el archivo .env",
+                "step_4": "Reinicia el servidor"
+            }
+        }
+
+@router.post("/alerts/send-to-jose/", response_model=dict)
+async def send_alert_to_jose(
+    days_ahead: int = Form(3, description="Días de anticipación para la alerta"),
+    db: Session = Depends(get_db)
+):
+    """
+    Enviar alerta específica a José con alimentos próximos a vencer
+    
+    Args:
+        days_ahead: Días de anticipación (default: 3)
+        db: Sesión de base de datos
+    
+    Returns:
+        Resultado del envío del email
+    """
+    from app.services.auto_notification_service import get_foods_near_expiry, send_expiration_alert
+    
+    try:
+        # Obtener alimentos próximos a vencer
+        foods_near_expiry = get_foods_near_expiry(db, days_ahead)
+        
+        if not foods_near_expiry:
+            return {
+                "success": True,
+                "message": "No hay alimentos próximos a vencer",
+                "foods_count": 0,
+                "recipient": "josemaba22@gmail.com",
+                "suggestion": "Agrega algunos alimentos con fechas cercanas para probar el sistema"
+            }
+        
+        # Enviar email específicamente a José
+        result = await send_expiration_alert(foods_near_expiry, "josemaba22@gmail.com")
+        
+        return result
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error enviando alerta a José: {str(e)}"
+        )
+
+@router.post("/alerts/schedule-immediate/", response_model=dict)
+async def schedule_immediate_alert(
+    minutes_from_now: int = Form(2, description="Minutos desde ahora para enviar la alerta"),
+    db: Session = Depends(get_db)
+):
+    """
+    Programar una alerta inmediata en X minutos desde ahora (para pruebas)
+    
+    Args:
+        minutes_from_now: Minutos desde ahora para enviar la alerta (default: 2)
+        db: Sesión de base de datos
+    
+    Returns:
+        Confirmación de la programación
+    """
+    from datetime import datetime, timedelta
+    from apscheduler.schedulers.asyncio import AsyncIOScheduler
+    from apscheduler.triggers.date import DateTrigger
+    from app.services.auto_notification_service import auto_send_daily_alert
+    import asyncio
+    
+    try:
+        # Calcular hora objetivo
+        target_time = datetime.now() + timedelta(minutes=minutes_from_now)
+        
+        # Crear scheduler temporal
+        temp_scheduler = AsyncIOScheduler()
+        
+        # Agregar job único
+        temp_scheduler.add_job(
+            auto_send_daily_alert,
+            trigger=DateTrigger(run_date=target_time),
+            id=f"immediate_alert_{datetime.now().timestamp()}",
+            name=f"Alerta Inmediata en {minutes_from_now} minutos"
+        )
+        
+        # Iniciar scheduler
+        temp_scheduler.start()
+        
+        return {
+            "success": True,
+            "message": f"Alerta programada para {target_time.strftime('%H:%M:%S')}",
+            "scheduled_time": target_time.isoformat(),
+            "minutes_from_now": minutes_from_now,
+            "current_time": datetime.now().isoformat(),
+            "recipient": "josemaba22@gmail.com",
+            "note": "La alerta se enviará automáticamente en el tiempo especificado"
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error programando alerta inmediata: {str(e)}"
+        )
