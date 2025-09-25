@@ -5,27 +5,27 @@ services:
     restart: always
     environment:
       - MYSQL_ROOT_PASSWORD=food_password
-      - MYSQL_DATABASE=foodsaver
+      - MYSQL_DATABASE=foodimage
       - MYSQL_USER=food_user
       - MYSQL_PASSWORD=food_password
     ports:
       - "3308:3306"
-    container_name: foodsaver-db
+    container_name: foodimage-db
     volumes:
       - mysql-volume:/var/lib/mysql
     networks:
-      - foodsaver-network
+      - foodimage-network
 
   api:
     build: .
-    image: foodsaver-app:v1.2
+    image: foodimage-app:v1.2
     ports:
       - "3002:8383"
-    container_name: foodsaver-api
+    container_name: foodimage-api
     depends_on:
       - db
     networks:
-      - foodsaver-network
+      - foodimage-network
 
 
 volumes:

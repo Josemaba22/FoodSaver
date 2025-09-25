@@ -9,5 +9,6 @@ class Food(Base):
     name = Column(String(100), nullable=False)
     category_id = Column(Integer, ForeignKey("categories.id"), nullable=False)
     admission_date = Column(Date, nullable=False)
+    image_url = Column(String(500), nullable=True)  # URL de la imagen guardada
 
     category = relationship("Category")
